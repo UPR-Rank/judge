@@ -1,8 +1,16 @@
+"""Compiling and invoking the checker that compares a run against the answer.
+
+Two backends are supported: testlib.h, compiled as C++, and testlib4j.jar,
+which runs on the JVM. The checker is compiled once per submission, into the
+submission folder, and is then run once per test case.
+"""
+
 import os
 import shutil
+
 from django.conf import settings
 
-from .__utils import get_exitcode_stdout_stderr
+from judging.utils import get_exitcode_stdout_stderr
 
 
 def compile_checker_testlib_h(checker, cwd):

@@ -22,16 +22,22 @@ import os
 import shutil
 import tempfile
 from types import SimpleNamespace
+from unittest.mock import patch
 
+from django.db import DatabaseError
 from django.test import SimpleTestCase, override_settings
 
-from api.management.commands.__utils import compress_output_lines
-from api.management.commands.grader import (
+from api.models import Result
+from judging import state, verdicts
+from judging.runner import (
     LARGECONST,
-    check_problem_folder,
     get_cmd_for_language_safeexec,
     parse_safeexec_output,
 )
+from judging.sandbox import check_problem_folder
+from judging.utils import compress_output_lines
+
+from . import FixturedTestCase
 
 
 def safeexec_report(message, memory_kbytes=1424, cpu_seconds="1.000"):
@@ -312,3 +318,157 @@ class CheckProblemFolderTestCase(SimpleTestCase):
 
         with override_settings(PROBLEMS_FOLDER=self.problems_folder):
             self.assertFalse(check_problem_folder(self.problem))
+
+
+class VerdictMappingTestCase(SimpleTestCase):
+    """The bridge between what safeexec reports and the stored Result."""
+
+    def test_every_invocation_maps_to_a_result_name(self):
+        # This is the table the inline code used before it moved here, so it
+        # is spelled out: safeexec reports a crash, and a crash is recorded
+        # as an internal error, not as a runtime error of the submission.
+        self.assertEqual(
+            verdicts.INVOCATION_TO_VERDICT,
+            {
+                "SECURITY_VIOLATION": "runtime error",
+                "MEMORY_LIMIT_EXCEEDED": "memory limit exceeded",
+                "TIME_LIMIT_EXCEEDED": "time limit exceeded",
+                "IDLENESS_LIMIT_EXCEEDED": "idleness limit exceeded",
+                "CRASH": "internal error",
+                "FAIL": "internal error",
+                "RUNTIME_ERROR": "runtime error",
+                "INTERNAL_ERROR": "internal error",
+            },
+        )
+
+    def test_success_is_not_a_verdict(self):
+        # SUCCESS is handled by the caller (it means "the program ran"), so
+        # asking for its verdict is a programming error.
+        self.assertNotIn("SUCCESS", verdicts.INVOCATION_TO_VERDICT)
+
+    def test_unknown_invocation_raises(self):
+        # An outcome safeexec can report that we do not know about must fail
+        # loudly instead of silently grading a submission as accepted.
+        with self.assertRaises(KeyError):
+            verdicts.verdict_for_invocation("SOMETHING_NEW")
+
+    def test_only_timing_verdicts_are_retried(self):
+        # Retrying a wrong answer would only waste the machine, retrying a
+        # timing verdict is what makes the retry worth it.
+        self.assertEqual(
+            verdicts.RETRYABLE_VERDICTS,
+            frozenset({"time limit exceeded", "idleness limit exceeded"}),
+        )
+
+
+class SubmissionStateTestCase(FixturedTestCase):
+    """The transitions the grader relies on, and the claim that hands work out."""
+
+    def setUp(self):
+        super(SubmissionStateTestCase, self).setUp()
+        self.compiling, _ = Result.objects.get_or_create(
+            name="compiling", color="orange", penalty=False
+        )
+        self.running, _ = Result.objects.get_or_create(
+            name="running", color="blue", penalty=False
+        )
+        self.internal_error, _ = Result.objects.get_or_create(
+            name="internal error", color="red", penalty=True
+        )
+        self.user = self.newUser(username="state-user", is_active=True)
+        self.instance = self.newContestInstance(self.running_contest, self.user)
+
+    def new_pending_submission(self):
+        return self.newSubmission(
+            self.instance,
+            self.user,
+            problem=self.problem1,
+            result=self.pending,
+        )
+
+    def test_transitions_are_visible_after_refresh(self):
+        submission = self.new_pending_submission()
+
+        state.mark_as_compiling(submission)
+        submission.refresh_from_db()
+        self.assertEqual(submission.result, self.compiling)
+
+        state.mark_as_running(submission)
+        submission.refresh_from_db()
+        self.assertEqual(submission.result, self.running)
+
+    def test_set_verdict_records_timing_and_details(self):
+        submission = self.new_pending_submission()
+
+        state.set_verdict(
+            submission,
+            "wrong answer",
+            execution_time=123,
+            memory_used=456,
+            judgement_details="Case#1: nope",
+        )
+        submission.refresh_from_db()
+        self.assertEqual(submission.result, self.wrong_answer)
+        self.assertEqual(submission.execution_time, 123)
+        self.assertEqual(submission.memory_used, 456)
+        self.assertEqual(submission.judgement_details, "Case#1: nope")
+
+    def test_set_internal_error_uses_the_internal_error_result(self):
+        submission = self.new_pending_submission()
+
+        state.set_internal_error(submission, "something went wrong")
+        submission.refresh_from_db()
+        self.assertEqual(submission.result, self.internal_error)
+
+    def test_claim_takes_the_pending_submission_and_flips_it(self):
+        submission = self.new_pending_submission()
+
+        claimed = state.claim_next_pending_submission()
+
+        self.assertEqual(claimed, submission)
+        claimed.refresh_from_db()
+        self.assertEqual(claimed.result, self.compiling)
+
+    def test_claim_returns_none_when_there_is_nothing_to_grade(self):
+        self.assertIsNone(state.claim_next_pending_submission())
+
+    def test_claim_skips_submissions_that_are_already_taken(self):
+        first = self.new_pending_submission()
+
+        claimed = state.claim_next_pending_submission()
+
+        self.assertEqual(claimed, first)
+        # The submission is no longer pending, so a second grader finds nothing
+        # instead of grading the same work twice.
+        self.assertIsNone(state.claim_next_pending_submission())
+
+    def test_claim_returns_the_oldest_pending_submission(self):
+        older = self.new_pending_submission()
+        newer = self.new_pending_submission()
+
+        claimed = state.claim_next_pending_submission()
+
+        self.assertEqual(claimed, older)
+        self.assertNotEqual(claimed, newer)
+
+    def test_reset_to_pending_makes_it_gradeable_again(self):
+        submission = self.new_pending_submission()
+        state.mark_as_compiling(submission)
+
+        state.reset_to_pending(submission.id)
+
+        submission.refresh_from_db()
+        self.assertEqual(submission.result, self.pending)
+        self.assertEqual(state.claim_next_pending_submission(), submission)
+
+    def test_reset_to_pending_gives_up_instead_of_raising(self):
+        # A database error while reclaiming must not kill the grader: the
+        # submission stays claimed and the loop moves on.
+        submission = self.new_pending_submission()
+        state.mark_as_compiling(submission)
+
+        with patch.object(state, "get_result", side_effect=DatabaseError("down")):
+            state.reset_to_pending(submission.id, sleep=0, trials=2)
+
+        submission.refresh_from_db()
+        self.assertEqual(submission.result, self.compiling)
