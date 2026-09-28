@@ -12,6 +12,15 @@ services:
       # for instant rollback. Roll back by reverting image->postgres:11.5 and
       # this mount->pgdb, then `up`. Delete `pgdb` only after PG 16 is confirmed good.
       - pgdb16:/var/lib/postgresql/data
+  redis:
+    image: redis:7-alpine
+    # Redis only carries the grading queue; PostgreSQL holds the submissions
+    # themselves, so nothing here is the only copy of anything. Appendonly is
+    # on so a restart does not delay every pending submission.
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdb:/data
+    restart: unless-stopped
   api:
     build:
       context: ../..
@@ -24,17 +33,48 @@ services:
       - "8000:8000"
     depends_on:
       - database
-  grader:
+      - redis
+  worker:
     build:
       context: ../..
       dockerfile: docker/common/dockerfile.grader
-    command: bash -c "bash grader-firewall.sh && /opt/environ/bin/python3 manage.py grader"
+    # One worker process at a time: grading is CPU and memory bound, and
+    # concurrency is a matter of adding replicas, not of adding processes
+    # inside one container.
+    command: >
+      bash -c "bash grader-firewall.sh &&
+               exec /opt/environ/bin/celery -A judging worker
+               --loglevel=INFO --concurrency=1"
     volumes:
       - problems:/problems
+    depends_on:
+      - database
+      - redis
     cap_add:
       - NET_ADMIN
     ulimits:
       stack: -1
+    restart: unless-stopped
+  # Schedules the reaper that returns submissions stranded by a dead worker
+  # to the queue. Separate from the worker so a queue drained by a stopped
+  # worker still recovers.
+  beat:
+    build:
+      context: ../..
+      dockerfile: docker/common/dockerfile.grader
+    command: >
+      bash -c "bash grader-firewall.sh &&
+               exec /opt/environ/bin/celery -A judging beat --loglevel=INFO"
+    volumes:
+      - problems:/problems
+    depends_on:
+      - database
+      - redis
+    cap_add:
+      - NET_ADMIN
+    ulimits:
+      stack: -1
+    restart: unless-stopped
   ######################################################################
   # Monitoring
   ######################################################################
@@ -104,4 +144,5 @@ volumes:
   pgdb:      # PG 11 data — kept for rollback; remove once PG 16 is confirmed good
   pgdb16:    # PG 16 data (restore target for the 11 -> 16 upgrade)
   problems:
+  redisdb:
   varwww:

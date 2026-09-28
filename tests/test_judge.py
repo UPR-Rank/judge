@@ -366,15 +366,12 @@ class SubmissionStateTestCase(FixturedTestCase):
 
     def setUp(self):
         super(SubmissionStateTestCase, self).setUp()
-        self.compiling, _ = Result.objects.get_or_create(
-            name="compiling", color="orange", penalty=False
-        )
-        self.running, _ = Result.objects.get_or_create(
-            name="running", color="blue", penalty=False
-        )
-        self.internal_error, _ = Result.objects.get_or_create(
-            name="internal error", color="red", penalty=True
-        )
+        # These are looked up, not created: migration api.0050 already
+        # provides them, and creating a differently-cased duplicate would make
+        # the grader's case-insensitive lookup ambiguous.
+        self.compiling = Result.objects.get(name__iexact="compiling")
+        self.running = Result.objects.get(name__iexact="running")
+        self.internal_error = Result.objects.get(name__iexact="internal error")
         self.user = self.newUser(username="state-user", is_active=True)
         self.instance = self.newContestInstance(self.running_contest, self.user)
 

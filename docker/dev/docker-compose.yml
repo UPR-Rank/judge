@@ -16,6 +16,21 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+  redis:
+    image: redis:7-alpine
+    # Redis only carries the grading queue; PostgreSQL holds the submissions
+    # themselves, so this holds no state that cannot be rebuilt. Appendonly is
+    # on anyway so that a restart does not delay every pending submission.
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdb:/data
+    # Wait until Redis answers, so a worker does not start against a broker
+    # that is still booting and fail its first tasks.
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      timeout: 3s
+      retries: 20
   api:
     build:
       context: ../..
@@ -34,7 +49,9 @@ services:
     depends_on:
       database:
         condition: service_healthy
-  grader:
+      redis:
+        condition: service_healthy
+  worker:
     # The grader image installs an x86_64-only gcc toolchain (and PyPy/Mono),
     # so it must be built and run as linux/amd64 to match production. On arm64
     # hosts (Apple Silicon) this runs under emulation.
@@ -42,12 +59,44 @@ services:
     build:
       context: ../..
       dockerfile: docker/common/dockerfile.grader
-    command: bash -c "bash grader-firewall.sh && /opt/environ/bin/python3 manage.py grader"
+    # The firewall goes up before the worker starts, because the whole point
+    # of this container is to run untrusted code with no network. It permits
+    # output from root, which is this process, and drops everything else, so
+    # the worker can still reach Redis and PostgreSQL while the submission it
+    # runs, as the unprivileged judge user, cannot reach anything.
+    command: >
+      bash -c "bash grader-firewall.sh &&
+               exec /opt/environ/bin/celery -A judging worker
+               --loglevel=INFO --concurrency=1"
     volumes:
       - ../..:/code
       - problems:/problems
     depends_on:
       database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    cap_add:
+      - NET_ADMIN
+    ulimits:
+      stack: -1
+  # Runs the reaper on a schedule. It is separate from the worker because a
+  # task should not depend on a worker being up to schedule itself.
+  beat:
+    platform: linux/amd64
+    build:
+      context: ../..
+      dockerfile: docker/common/dockerfile.grader
+    command: >
+      bash -c "bash grader-firewall.sh &&
+               exec /opt/environ/bin/celery -A judging beat --loglevel=INFO"
+    volumes:
+      - ../..:/code
+      - problems:/problems
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     cap_add:
       - NET_ADMIN
@@ -57,4 +106,5 @@ services:
 volumes:
   pgdb:
   problems:
+  redisdb:
   varwww:

@@ -13,6 +13,7 @@ from django.views import View
 from django.utils.translation import gettext_lazy as _
 
 from api.models import Submission, Compiler, Problem, Result
+from judging.tasks import enqueue_grading
 from mog.helpers import filter_submissions, get_paginator
 
 from mog.gating import (
@@ -219,6 +220,10 @@ class Submit(View):
             submission.hidden = True
         submission.save()
 
+        # Hand it to a worker. The message goes out only once the submission
+        # is committed, so a worker never receives an id it cannot find.
+        enqueue_grading(submission.id)
+
         # Set default compiler after a submission
         if hasattr(request.user, "profile"):
             profile = request.user.profile
@@ -251,7 +256,13 @@ def rejudge(request, submission_id):
             messages.info(request, msg, extra_tags="warning")
         else:
             submission.result = Result.objects.get(name__iexact="pending")
+            # Clear the previous claim, so a stale timestamp cannot be read as
+            # this rejudge having been started long ago.
+            submission.claimed_at = None
             submission.save()
+            # Same as on submission: grade it again, once the rejudge is
+            # committed.
+            enqueue_grading(submission.id)
 
     # TODO: Find a better way to redirect to previous page.
     return redirect(request.META.get("HTTP_REFERER", "/"))

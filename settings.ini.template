@@ -49,6 +49,30 @@ RESOURCES_FOLDER: /code/resources
 # directory for all runs. Only the grader needs it, so no shared
 # volume is required.
 SANDBOX_FOLDER: /sandbox
+# How many times each test case is run, to settle verdicts that depend on
+# the machine being momentarily busy.
+NUMBER_OF_EXECUTIONS: 2
+# A claimed submission that has not moved for this many seconds is assumed to
+# belong to a worker that died, and the reaper puts it back in the queue.
+CLAIM_TIMEOUT: 900
+
+[celery]
+# Redis is the broker. Database 0 carries the grading tasks and database 1 the
+# task results, so that a large result history cannot crowd out the queue.
+# PostgreSQL remains the source of truth for what still needs grading, so
+# losing a message only costs a delay.
+BROKER_URL: redis://redis:6379/0
+RESULT_BACKEND: redis://redis:6379/1
+# Run tasks in the caller instead of handing them to a worker. Only useful in
+# tests and in a single-process development setup; with several web
+# processes it grades in whichever process received the request.
+TASK_ALWAYS_EAGER: false
+# Hard limit on a single grading task, in seconds. Must stay below the broker
+# visibility timeout so a running task is not handed to a second worker.
+TASK_TIME_LIMIT: 3600
+# How often the beat scheduler looks for submissions stranded by a dead
+# worker, in seconds.
+REAP_INTERVAL: 300
 
 [social]
 SOCIAL_AUTH_FACEBOOK_KEY: secret_not_auto_fillable_placeholder

@@ -4,6 +4,7 @@ autopep8==2.3.2
 beautifulsoup4==4.12.3
 black==23.3.0
 certifi==2024.8.30
+celery==5.6.3
 cffi==2.0.0
 charset-normalizer==3.4.0
 click==8.1.7
@@ -38,6 +39,7 @@ pylint==4.0.6
 python3-openid==3.1.0
 pytz==2024.2
 requests-oauthlib==0.8.0
+redis==5.0.8
 requests==2.32.3
 six==1.16.0
 social-auth-app-django==5.4.3

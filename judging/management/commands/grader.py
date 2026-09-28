@@ -1,27 +1,23 @@
 """The grader: a long-running process that judges pending submissions.
 
 Run it with ``manage.py grader``. It is a single process that polls the
-database, claims one submission at a time, and grades it inside the sandbox.
-It is replaced by a Celery worker in a later sprint; until then this is the
-only thing that turns submissions into verdicts.
+database, claims one submission at a time and grades it inside the sandbox.
+
+Celery workers (``judging.tasks.grade_submission``) now do the same work
+through a queue, and that is what the compose files start. This command is
+kept because the claim is atomic, so a worker and this command can run at
+the same time without grading anything twice, and because it is the
+simplest way to drain a queue by hand.
 """
 
 import logging as log
 import time
 
-from django.conf import settings
 from django.core.management import BaseCommand, CommandError
 from django.db import DatabaseError, close_old_connections
 
 from judging import state
-from judging.compilers import compile_submission
-from judging.sandbox import (
-    check_problem_folder,
-    create_submission_folder,
-    get_submission_folder,
-    remove_submission_folder,
-)
-from judging.service import grade_submission
+from judging.service import grade_claimed_submission
 
 
 class Command(BaseCommand):
@@ -65,24 +61,7 @@ class Command(BaseCommand):
                 submission = state.claim_next_pending_submission()
 
                 if submission:
-                    # ready to grade the new submission
-                    create_submission_folder(submission)
-                    if check_problem_folder(submission.problem):
-                        if compile_submission(submission):
-                            grade_submission(submission, number_of_executions)
-                    else:
-                        log.error(
-                            "There was a problem with the problem folder %s for submission #%d",
-                            get_submission_folder(submission),
-                            submission.id,
-                        )
-                        state.set_internal_error(
-                            submission, "internal error, problem not ready"
-                        )
-                    if not settings.DEBUG:
-                        # If we're in DEBUG mode, leave the submission folder
-                        # to make debugging easier.
-                        remove_submission_folder(submission)
+                    grade_claimed_submission(submission, number_of_executions)
                 else:
                     # we only wait if there was no submission to grade
                     time.sleep(sleep)
@@ -90,7 +69,8 @@ class Command(BaseCommand):
                 # Grading failed, database error caught here
                 # Possible reasons:
                 # 1) The connection to the database was interrupted or could not be established
-                # 2) Raise condition in a trigger in the database
+                # 2) Raise condition in a trigger in the database (TODO: Fix this raise condition)
+                # TODO: Add more logs!
                 log.error("Unexpected database error: %s", str(e))
                 close_old_connections()
                 if submission:

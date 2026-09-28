@@ -944,6 +944,10 @@ class Submission(models.Model):
     hidden = models.BooleanField(default=False)
     judgement_details = models.TextField(null=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="normal")
+    # When a worker claimed this submission for grading. It is what tells a
+    # submission that is merely slow apart from one whose worker died, since
+    # `date` is when it was sent, not when grading started.
+    claimed_at = models.DateTimeField(null=True, blank=True)
 
     @property
     def visible(self):
