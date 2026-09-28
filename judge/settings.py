@@ -107,6 +107,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 INSTALLED_APPS = [
     "api.apps.ApiConfig",
+    "judging.apps.JudgingConfig",
     "mog.apps.MogConfig",
     "palantir.apps.PalantirConfig",
     "frontend.apps.FrontendConfig",
