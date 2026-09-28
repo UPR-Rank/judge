@@ -10,8 +10,12 @@ rest of the project refers to them.
 
 import logging as log
 import time
+from datetime import timedelta
 
+from django.conf import settings
 from django.db import DatabaseError, transaction
+from django.db.models import Q
+from django.utils import timezone
 
 from api.models import Result, Submission
 
@@ -27,11 +31,13 @@ def get_result(name):
 def mark_as_pending(submission):
     """Put a submission back in the queue."""
     submission.result = get_result(PENDING)
+    submission.claimed_at = None
     submission.save()
 
 
 def mark_as_compiling(submission):
     submission.result = get_result(COMPILING)
+    submission.claimed_at = timezone.now()
     submission.save()
 
 
@@ -91,6 +97,66 @@ def claim_next_pending_submission():
     return submission
 
 
+def claim_submission(submission_id):
+    """Take one specific pending submission, or return None.
+
+    Used by the queue, which is told which submission to grade. Returns None
+    when the submission is no longer pending, which is how a worker finds out
+    that someone else already graded it or that it was rejudged meanwhile.
+    """
+    with transaction.atomic():
+        submission = (
+            Submission.objects.select_for_update(nowait=True)
+            .select_related("compiler", "problem")
+            .filter(pk=submission_id)
+            .filter(result__name__iexact=PENDING)
+            .first()
+        )
+        if submission:
+            log.debug(
+                "Received submission #%d, marking as '%s' and proceed",
+                submission.id,
+                COMPILING,
+            )
+            mark_as_compiling(submission)
+    return submission
+
+
+def is_stalled(submission, now=None, timeout=None):
+    """Whether a claimed submission looks like its worker died.
+
+    A worker that is alive does not sit on a claim for the whole timeout, and
+    a submission that was never claimed cannot be stalled, so both are ruled
+    out before the age is compared.
+    """
+    if submission.claimed_at is None:
+        return False
+    if submission.result.name.lower() not in (COMPILING, RUNNING):
+        return False
+    if timeout is None:
+        timeout = settings.GRADER_CLAIM_TIMEOUT
+    if now is None:
+        now = timezone.now()
+    return submission.claimed_at < now - timedelta(seconds=timeout)
+
+
+def stalled_submissions(timeout=None, now=None):
+    """Submissions a worker took and never finished, oldest claim first."""
+    if timeout is None:
+        timeout = settings.GRADER_CLAIM_TIMEOUT
+    if now is None:
+        now = timezone.now()
+    return (
+        Submission.objects.filter(
+            Q(result__name__iexact=COMPILING) | Q(result__name__iexact=RUNNING),
+            claimed_at__isnull=False,
+            claimed_at__lt=now - timedelta(seconds=timeout),
+        )
+        .order_by("claimed_at")
+        .only("id", "result__name", "claimed_at")
+    )
+
+
 def reset_to_pending(submission_id, sleep=5, trials=100):
     """Return a submission to the queue, retrying if the database is busy.
 
@@ -104,8 +170,7 @@ def reset_to_pending(submission_id, sleep=5, trials=100):
         try:
             with transaction.atomic():
                 submission = Submission.objects.get(pk=submission_id)
-                submission.result = get_result(PENDING)
-                submission.save()
+                mark_as_pending(submission)
             success = True
         except DatabaseError as e:
             log.error("Unexpected database error: %s", str(e))

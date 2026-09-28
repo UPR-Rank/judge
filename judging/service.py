@@ -8,11 +8,48 @@ so that each can be tested on its own.
 import json
 import logging as log
 
+from django.conf import settings
+
 from judging import state, verdicts
 from judging.checkers import compile_checker
+from judging.compilers import compile_submission
 from judging.runner import get_cmd_for_language_safeexec, run_grader
-from judging.sandbox import get_submission_folder, list_case_files
+from judging.sandbox import (
+    check_problem_folder,
+    create_submission_folder,
+    get_submission_folder,
+    list_case_files,
+    remove_submission_folder,
+)
 from judging.utils import compress_output_lines, get_exitcode_stdout_stderr
+
+
+def grade_claimed_submission(submission, number_of_executions=None):
+    """Grade a submission a worker has already claimed.
+
+    The submission must be in compiling: the claim is what stops a second
+    worker from grading the same work. Both the Celery task and the legacy
+    ``manage.py grader`` command come through here, so that the steps and
+    their order only exist once.
+    """
+    if number_of_executions is None:
+        number_of_executions = settings.GRADER_NUMBER_OF_EXECUTIONS
+
+    create_submission_folder(submission)
+    if check_problem_folder(submission.problem):
+        if compile_submission(submission):
+            grade_submission(submission, number_of_executions)
+    else:
+        log.error(
+            "There was a problem with the problem folder %s for submission #%d",
+            get_submission_folder(submission),
+            submission.id,
+        )
+        state.set_internal_error(submission, "internal error, problem not ready")
+
+    if not settings.DEBUG:
+        # In DEBUG the folder is left behind to make debugging easier.
+        remove_submission_folder(submission)
 
 
 def grade_submission(submission, number_of_executions):

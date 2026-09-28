@@ -269,6 +269,61 @@ SANDBOX_FOLDER = config.get("grader", "SANDBOX_FOLDER")
 # - testlib4j.jar
 RESOURCES_FOLDER = config.get("grader", "RESOURCES_FOLDER")
 
+# How many times the grader runs each test case. Timing verdicts depend on the
+# machine being momentarily busy, so a second run settles them; re-running a
+# wrong answer would only waste the machine.
+GRADER_NUMBER_OF_EXECUTIONS = config.getint(
+    "grader", "NUMBER_OF_EXECUTIONS", fallback=2
+)
+
+# A claimed submission that stops moving for this long is assumed to belong to
+# a worker that died, and the reaper puts it back in the queue.
+GRADER_CLAIM_TIMEOUT = config.getint("grader", "CLAIM_TIMEOUT", fallback=900)
+
+# Celery is the dispatcher; Redis is only the signal. PostgreSQL stays the
+# source of truth for what still needs grading, so a lost message or a broker
+# that is down when a submission is created costs a delay, not a submission.
+CELERY_BROKER_URL = config.get("celery", "BROKER_URL", fallback="redis://redis:6379/0")
+CELERY_RESULT_BACKEND = config.get(
+    "celery", "RESULT_BACKEND", fallback="redis://redis:6379/1"
+)
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Only one task per worker process: a worker busy grading a submission must not
+# have a second one handed to it, because grading is CPU and memory bound.
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_CONCURRENCY = 1
+
+# A task is acknowledged after it finishes, not when it is received, so a
+# worker that dies mid-grading gives the message back instead of dropping it.
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+# The time limit has to stay below the visibility timeout, otherwise a task
+# still running is handed to a second worker.
+CELERY_TASK_TIME_LIMIT = config.getint("celery", "TASK_TIME_LIMIT", fallback=3600)
+CELERY_TASK_SOFT_TIME_LIMIT = CELERY_TASK_TIME_LIMIT - 60
+CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": CELERY_TASK_TIME_LIMIT + 60}
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_MAX_RETRIES = None
+
+# Run tasks in the caller instead of handing them to a worker. Useful in tests
+# and for a single-process development setup.
+CELERY_TASK_ALWAYS_EAGER = config.getboolean(
+    "celery", "TASK_ALWAYS_EAGER", fallback=False
+)
+CELERY_TASK_EAGER_PROPAGATES = True
+
+CELERY_BEAT_SCHEDULE = {
+    "reap-stuck-submissions": {
+        "task": "judging.tasks.reap_stuck_submissions",
+        "schedule": config.getint("celery", "REAP_INTERVAL", fallback=300),
+    }
+}
+
 # Email configuration
 # In local development there is normally no working SMTP server (settings.ini
 # ships placeholder credentials), so print emails — account activation links,
