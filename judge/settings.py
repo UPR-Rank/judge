@@ -435,10 +435,19 @@ TURNSTILE_SECRET = config.get(
 )
 
 # Cache settings
+# The cache has to be shared: four Gunicorn workers, the Celery worker and
+# beat all read and write it, so a per-process cache would be several unrelated
+# caches — whichever worker answered a standings request would be the only one
+# to learn the result, and an invalidation would only reach the process that
+# wrote the row. Redis database 2 carries it, next to the broker (0) and the
+# task results (1). Everything cached is derived data PostgreSQL can recompute,
+# so an unreachable Redis must not take the site down: the backend degrades to
+# a per-process cache instead of raising (see judge/cache.py).
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "mog-cache",
+        "BACKEND": "judge.cache.ResilientRedisCache",
+        "LOCATION": config.get("cache", "URL", fallback="redis://redis:6379/2"),
+        "KEY_PREFIX": config.get("cache", "KEY_PREFIX", fallback="mog"),
     }
 }
 

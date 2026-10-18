@@ -18,7 +18,7 @@ should describe the following sections:
 
 from django.core.cache import cache
 
-from api.lib import constants
+from api.lib import cache_keys, constants
 from api.models import Post, UserProfile, ContestPermission, Contest
 from mog.standing import calculate_standing_new
 
@@ -26,11 +26,13 @@ from mog.standing import calculate_standing_new
 def cache_result(key, timeout=3600):
     def outer(func):
         def inner(*args, **kwargs):
-            custom_key = key + "-".join([str(x).replace(" ", "_") for x in args])
-            val = cache.get(custom_key)
+            versioned_key = cache_keys.versioned_key(
+                key, cache_keys.current_version(key), *args
+            )
+            val = cache.get(versioned_key)
             if val is None:
                 val = func(*args, **kwargs)
-                cache.set(custom_key, val, timeout)
+                cache.set(versioned_key, val, timeout)
             return val
 
         return inner
