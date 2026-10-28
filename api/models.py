@@ -4,7 +4,6 @@ import html
 import uuid
 import json
 
-from django.core.mail import send_mail
 from django.db.models import F
 from django.db.models import Sum, Value
 from django.db.models.functions import Coalesce, Lower
@@ -22,7 +21,7 @@ from django.utils.safestring import mark_safe
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 
-from mog.tasks import report_clarification
+from mog.tasks import report_clarification, send_email, site_url
 from mog.gating import (
     get_all_contest_for_judge,
     user_is_admin,
@@ -618,15 +617,13 @@ class Message(models.Model):
 
     def save(self, *args, **kwargs):
         super(Message, self).save(*args, **kwargs)
-        send_mail(
+        send_email(
             "{0} sent you a message".format(self.source.username),
-            message="<NO TEXT>",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[self.target.email],
-            fail_silently=True,
+            "<NO TEXT>",
+            [self.target.email],
             html_message=render_to_string(
                 "mog/email/message_notification.html",
-                {"message": self, "domain": "http://matcomgrader.com"},
+                {"message": self, "domain": site_url()},
             ),
         )
 
@@ -1095,19 +1092,13 @@ class Comment(models.Model):
             self.html += html.escape(self.body[last_index:], quote=True)
             # notify users about this comment
             for user in users:
-                send_mail(
+                send_email(
                     "{0} has mentioned you in a comment".format(self.user.username),
-                    message="<NO TEXT>",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[user.email],
-                    fail_silently=True,
+                    "<NO TEXT>",
+                    [user.email],
                     html_message=render_to_string(
                         "mog/email/mention.html",
-                        {
-                            "user": self.user,
-                            "comment": self,
-                            "domain": "http://matcomgrader.com",
-                        },
+                        {"user": self.user, "comment": self, "domain": site_url()},
                     ),
                 )
         # save now

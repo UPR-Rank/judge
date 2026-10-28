@@ -77,6 +77,7 @@ Submissions are untrusted code, so:
 | --- | --- |
 | `api` | Django + Gunicorn: contests, problems, submissions, scoring |
 | `worker` | Grader image; consumes the queue, compiles and judges |
+| `tasks` | API image; sends e-mails, webhooks and access logs from the `side_effects` queue |
 | `beat` | Schedules the reaper |
 | `redis` | Broker and result backend |
 | `cache` | Shared cache; a separate Redis with LRU eviction so it can never evict the queue |
@@ -145,7 +146,7 @@ docker-compose -f docker/dev/docker-compose.yml exec api \
     /opt/environ/bin/python3 manage.py test tests
 ```
 
-132 tests, all passing.
+145 tests, all passing.
 Lint is `flake8` and `black`; the CI workflows run both.
 
 ## Work in progress
@@ -158,9 +159,11 @@ The judge is being modernized in sprints, each on its own branch off `master`.
 | 1 — Judge modularization | Done: the 532-line command split into the `judging` package |
 | 2 — Queue | Done: Celery on Redis, with the reaper |
 | 3 — Shared cache | Done: one Redis-backed cache for every process, versioned invalidation, degrades to local memory |
-| 4 — Side effects | Next: e-mails, webhooks, access log and ratings move to Celery |
-| 5 — Web refactor | Planned |
-| 6 — Observability and deployment | Planned |
+| 4 — Side effects | Done: e-mails, webhooks and access logs on their own Celery queue; atomic rating |
+| 5 — UPR identity and academic roles | Next |
+| 6 — Web refactor | Planned |
+| 7 — Observability and deployment | Planned |
+| 8 — Validation and v1.0 | Planned |
 
 ### Known gaps
 

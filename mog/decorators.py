@@ -1,16 +1,7 @@
-import threading
-
 from django.contrib import messages
 from django.shortcuts import redirect
 
 from mog.gating import public_actions_blocked, user_is_admin
-
-
-def asynchronous(func):
-    def wrapper(*args, **kwargs):
-        threading.Thread(target=func, args=args, kwargs=kwargs).start()
-
-    return wrapper
 
 
 def public_actions_required(function):

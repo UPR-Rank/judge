@@ -59,6 +59,23 @@ services:
         condition: service_healthy
       cache:
         condition: service_started
+  # Sends notifications (e-mails, webhooks, access logs) from the
+  # `side_effects` queue. Same image as the API: these tasks need the network,
+  # which the grader's firewall denies.
+  tasks:
+    build:
+      context: ../..
+      dockerfile: docker/dev/dockerfile
+    command: >
+      /opt/environ/bin/celery -A judging worker -Q side_effects
+      --concurrency=2 --loglevel=INFO
+    volumes:
+      - ../..:/code
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
   worker:
     # The grader image installs an x86_64-only gcc toolchain (and PyPy/Mono),
     # so it must be built and run as linux/amd64 to match production. On arm64
