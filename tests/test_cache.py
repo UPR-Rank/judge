@@ -64,61 +64,55 @@ class CacheKeysTestCase(TestCase):
         cache.set(key, "value")
         self.assertEqual(cache.get(key), "value")
         cache_keys.invalidate(base)
-        # old versioned key is still in the store, but a new read uses new version
+        # The old entry stays in the store until it expires; what invalidation
+        # guarantees is that reads now go to a new, empty address.
         new_key = cache_keys.versioned_key(base, cache_keys.current_version(base), "x")
         self.assertNotEqual(key, new_key)
-        self.assertIsNone(cache.get(key))
         self.assertIsNone(cache.get(new_key))
 
 
 class ResilientRedisCacheTestCase(TestCase):
-    def tearDown(self):
-        cache.clear()
-        super().tearDown()
+    """Redis is made to fail by patching the parent backend, so what runs is the
+    real fallback in ``ResilientRedisCache`` and not a mock of it."""
 
-    def test_degrades_on_connection_error(self):
-        backend = judge_cache.ResilientRedisCache("redis://invalid:6379/0", {})
-        backend.set("k", "v", timeout=None)
-        with patch.object(
-            backend,
-            "set",
-            side_effect=judge_cache.RedisConnectionError("boom"),
-        ):
-            backend.set("k2", "v2", timeout=None)
-        self.assertEqual(backend.local.get("k2"), "v2")
+    def setUp(self):
+        self.backend = judge_cache.ResilientRedisCache("redis://redis:6379/9", {})
 
-    def test_degrades_on_timeout_error(self):
-        backend = judge_cache.ResilientRedisCache("redis://invalid:6379/0", {})
-        with patch.object(
-            backend,
-            "get",
-            side_effect=judge_cache.RedisTimeoutError("boom"),
-        ):
-            self.assertIsNone(backend.get("missing"))
-
-    def test_degrades_on_many_operations(self):
-        backend = judge_cache.ResilientRedisCache("redis://invalid:6379/0", {})
-        backend.set_many({"a": 1, "b": 2}, timeout=None)
-        with patch.object(
-            backend,
-            "set_many",
-            side_effect=judge_cache.RedisConnectionError("boom"),
-        ):
-            backend.set_many({"c": 3}, timeout=None)
-        self.assertEqual(
-            backend.local.get_many(["a", "b", "c"]), {"a": 1, "b": 2, "c": 3}
+    def fail(self, operation, error=judge_cache.RedisConnectionError):
+        return patch.object(
+            judge_cache.RedisCache, operation, side_effect=error("boom")
         )
 
+    def test_degrades_on_connection_error(self):
+        with self.fail("set"):
+            self.backend.set("k2", "v2", timeout=None)
+        self.assertEqual(self.backend.local.get("k2"), "v2")
+        with self.fail("get"):
+            self.assertEqual(self.backend.get("k2"), "v2")
+
+    def test_degrades_on_timeout_error(self):
+        with self.fail("get", judge_cache.RedisTimeoutError):
+            self.assertIsNone(self.backend.get("missing"))
+
+    def test_degrades_on_many_operations(self):
+        with self.fail("set_many"):
+            self.backend.set_many({"a": 1, "b": 2, "c": 3}, timeout=None)
+        with self.fail("get_many"):
+            self.assertEqual(
+                self.backend.get_many(["a", "b", "c"]), {"a": 1, "b": 2, "c": 3}
+            )
+
     def test_clear_degrades_and_clears_local(self):
-        backend = judge_cache.ResilientRedisCache("redis://invalid:6379/0", {})
-        backend.local.set("x", 1)
-        with patch.object(
-            backend,
-            "clear",
-            side_effect=judge_cache.RedisConnectionError("boom"),
-        ):
-            backend.clear()
-        self.assertIsNone(backend.local.get("x"))
+        self.backend.local.set("x", 1)
+        with self.fail("clear"):
+            self.backend.clear()
+        self.assertIsNone(self.backend.local.get("x"))
+
+    def test_other_redis_errors_propagate(self):
+        # Only "Redis did not answer" degrades; anything else is a bug.
+        with self.fail("get", judge_cache.RedisError):
+            with self.assertRaises(judge_cache.RedisError):
+                self.backend.get("k")
 
 
 class ConstantsAndWiringTestCase(TestCase):

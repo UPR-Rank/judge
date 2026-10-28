@@ -20,6 +20,7 @@ Two properties matter beyond "the cache is shared":
   outside its own namespace.
 """
 
+from django.core.cache.backends.base import DEFAULT_TIMEOUT
 from django.core.cache.backends.locmem import LocMemCache
 from django.core.cache.backends.redis import RedisCache
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -73,13 +74,13 @@ class ResilientRedisCache(RedisCache):
         except UNREACHABLE:
             return self._fallback("get", key, default, version)
 
-    def set(self, key, value, timeout=RedisCache.default_timeout, version=None):
+    def set(self, key, value, timeout=DEFAULT_TIMEOUT, version=None):
         try:
             return super().set(key, value, timeout, version)
         except UNREACHABLE:
             return self._fallback("set", key, value, timeout, version)
 
-    def add(self, key, value, timeout=RedisCache.default_timeout, version=None):
+    def add(self, key, value, timeout=DEFAULT_TIMEOUT, version=None):
         try:
             return super().add(key, value, timeout, version)
         except UNREACHABLE:
@@ -97,7 +98,7 @@ class ResilientRedisCache(RedisCache):
         except UNREACHABLE:
             return self._fallback("get_many", keys, version)
 
-    def set_many(self, data, timeout=RedisCache.default_timeout, version=None):
+    def set_many(self, data, timeout=DEFAULT_TIMEOUT, version=None):
         try:
             return super().set_many(data, timeout, version)
         except UNREACHABLE:
@@ -115,7 +116,7 @@ class ResilientRedisCache(RedisCache):
         except UNREACHABLE:
             return self._fallback("has_key", key, version)
 
-    def touch(self, key, timeout=RedisCache.default_timeout, version=None):
+    def touch(self, key, timeout=DEFAULT_TIMEOUT, version=None):
         try:
             return super().touch(key, timeout, version)
         except UNREACHABLE:

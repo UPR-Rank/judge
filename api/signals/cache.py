@@ -2,7 +2,7 @@ from django.db.models import signals
 from django.dispatch import receiver
 
 from api.lib import cache_keys, constants
-from api.models import Contest, Post, RatingChange, Submission
+from api.models import Contest, ContestPermission, Post, RatingChange, Submission
 
 
 @receiver(signals.post_delete, sender=Post)
@@ -27,3 +27,12 @@ def clean_five_top_rated_profiles(*args, **kwargs):
 @receiver(signals.post_save, sender=RatingChange)
 def clean_user_rating(*args, **kwargs):
     cache_keys.invalidate(constants.CACHE_KEY_USER_RATING)
+
+
+# Without this a granted or revoked judge/observer role took up to
+# USER_CONTESTS_TIMEOUT to apply, because the per-user contest list was only
+# dropped by expiry.
+@receiver(signals.post_delete, sender=ContestPermission)
+@receiver(signals.post_save, sender=ContestPermission)
+def clean_user_contests(*args, **kwargs):
+    cache_keys.invalidate(constants.CACHE_KEY_USER_CONTESTS)

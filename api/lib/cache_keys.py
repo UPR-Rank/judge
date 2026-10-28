@@ -28,7 +28,7 @@ def make_key(base, *args):
     arguments is the same query every time, so it should not depend on how it
     happened to be called.
     """
-    if not args:
+    if args in ((), ((),), (None,)):
         return base
     return "{}:{}".format(base, hash_args(args))
 
