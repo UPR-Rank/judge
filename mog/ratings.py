@@ -5,6 +5,8 @@ The formulas are taken from https://codeforces.com/blog/entry/20762
 
 from math import sqrt
 
+from django.db import transaction
+
 from judge import settings
 from api.models import RatingChange
 from api.lib.queries import calculate_standing
@@ -151,10 +153,12 @@ def get_rating_deltas(ranks, ratings):
     return deltas, seeds
 
 
+@transaction.atomic
 def set_ratings(contest):
     """
     Rates a contest. If everything goes well, adds to the database the RatingChanges that correspond to the
-    new rating results
+    new rating results. Atomic: a failure or an inconsistent result leaves the previous rating as it was,
+    instead of a contest with its old rating changes deleted and no new ones
     :param contest: Contest to be rated
     :return: True if the rating was applied. False if after computing the new rating some of the checks failed
     """
@@ -182,6 +186,8 @@ def set_ratings(contest):
     # if some of the necessary conditions for the new ratings are not satisfied do not apply the
     # rating and return False
     if not check_rating_deltas(ranks, ratings, deltas):
+        # Keep the rating changes deleted above: the previous rating stands.
+        transaction.set_rollback(True)
         return False
 
     # make the rating persistent

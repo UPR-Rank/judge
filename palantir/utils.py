@@ -1,7 +1,7 @@
 import json
 import re
 import requests
-import threading
+import logging as log
 import urllib
 
 from django.contrib.auth.models import User
@@ -33,7 +33,7 @@ def get_real_address_from_ip(ip: str) -> object:
         return info
     try:
         url = "http://ip-api.com/json/{}".format(ip)
-        info = json.loads(requests.get(url).content.decode("utf8"))
+        info = json.loads(requests.get(url, timeout=5).content.decode("utf8"))
     except:
         info = {}
     cache.set(key, info, constants.IP_INFO_TIMEOUT)
@@ -98,5 +98,15 @@ def _log_access_now(message: object):
 
 
 def log_access_eventually(message: object):
-    """Log access in a different thread to unblock the current request"""
-    threading.Thread(target=_log_access_now, args=[message], kwargs={}).start()
+    """Hand the access log to the `tasks` worker so the request does not wait
+    for the geo-IP lookup and the insert. Filtered requests are dropped here,
+    before they cost a message. An unreachable broker costs the log line, never
+    the request."""
+    if not should_log_access(message):
+        return
+    from palantir.tasks import log_access_task
+
+    try:
+        log_access_task.delay(message)
+    except Exception as e:
+        log.warning("Access log dropped, the task queue is unreachable: %s", e)

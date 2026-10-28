@@ -1,13 +1,11 @@
-import requests
 from django.conf import settings
+
+from mog.tasks import enqueue, post_to_webhook_task, site_url
 
 
 def post_content(content):
-    payload = {"embeds": [content]}
-
-    with requests.Session() as sess:
-        for webhook in settings.DISCORD_CLARIFICATION_WEBHOOKS:
-            sess.post(webhook, json=payload)
+    for webhook in settings.DISCORD_CLARIFICATION_WEBHOOKS:
+        enqueue(post_to_webhook_task, webhook, content)
 
 
 DESCRIPTION = """[{problem_title}]({problem_url})
@@ -21,15 +19,16 @@ def push_clarification_to_webhooks(clarification, create):
     contest_name = contest.name
     content["title"] = contest_name
 
-    content["url"] = f"http://matcomgrader.com/contest/{contest.pk}/clarifications"
+    base = site_url()
+    content["url"] = f"{base}/contest/{contest.pk}/clarifications"
 
     if clarification.problem:
         problem = clarification.problem
         problem_title = problem.title
-        problem_url = f"http://matcomgrader.com/problem/{problem.pk}/{problem.slug}/"
+        problem_url = f"{base}/problem/{problem.pk}/{problem.slug}/"
     else:
         problem_title = "General"
-        problem_url = f"http://matcomgrader.com/contest/problems/{contest.pk}"
+        problem_url = f"{base}/contest/problems/{contest.pk}"
 
     tags = []
     if create:

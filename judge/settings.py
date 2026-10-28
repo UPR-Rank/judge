@@ -317,6 +317,14 @@ CELERY_TASK_ALWAYS_EAGER = config.getboolean(
 )
 CELERY_TASK_EAGER_PROPAGATES = True
 
+# Notifications (e-mails, webhooks, access logs) go to their own queue, read by
+# the `tasks` worker. The grader only reads the default queue, so a burst of
+# notifications never waits in front of a submission, nor the reverse.
+CELERY_TASK_ROUTES = {
+    "mog.tasks.*": {"queue": "side_effects"},
+    "palantir.tasks.*": {"queue": "side_effects"},
+}
+
 CELERY_BEAT_SCHEDULE = {
     "reap-stuck-submissions": {
         "task": "judging.tasks.reap_stuck_submissions",
