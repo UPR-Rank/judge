@@ -8,6 +8,7 @@ from django.utils.safestring import mark_safe
 import humanize
 import pytz
 
+from api.lib import cache_keys, constants
 from api.models import Division, Result
 import api.utils as api_utils
 
@@ -18,10 +19,12 @@ register = template.Library()
 def get_color(rating):
     """Given a rating value returns the color of the corresponding division"""
     value = max(rating or 0, 0)
-    divisions = cache.get("divisions")
+    version = cache_keys.current_version(constants.CACHE_KEY_DIVISIONS)
+    key = cache_keys.versioned_key(constants.CACHE_KEY_DIVISIONS, version)
+    divisions = cache.get(key)
     if divisions is None:
         divisions = Division.objects.order_by("-rating").all()
-        cache.set("divisions", divisions)
+        cache.set(key, divisions, constants.DIVISIONS_TIMEOUT)
     for division in divisions:
         if value >= division.rating:
             return division.color
@@ -46,10 +49,12 @@ def date_url(date):
 
 @register.filter()
 def rating(user):
-    result = cache.get(user.id)
+    version = cache_keys.current_version(constants.CACHE_KEY_USER_RATING)
+    key = cache_keys.versioned_key(constants.CACHE_KEY_USER_RATING, version, user.id)
+    result = cache.get(key)
     if result is None:
         result = user.profile.rating if hasattr(user, "profile") else 0
-        cache.set(user.id, result, 5 * 60)  # 5 minutes
+        cache.set(key, result, constants.USER_RATING_TIMEOUT)
     return result
 
 
@@ -225,12 +230,14 @@ def format_minutes(delta):
 
 @register.filter()
 def result_by_name(name):
-    results = cache.get("results")
+    version = cache_keys.current_version(constants.CACHE_KEY_RESULTS)
+    key = cache_keys.versioned_key(constants.CACHE_KEY_RESULTS, version)
+    results = cache.get(key)
     if results is None:
         results = {}
         for result in Result.objects.all():
             results[result.name.lower()] = result.id
-        cache.set("results", results)
+        cache.set(key, results, constants.RESULTS_TIMEOUT)
     return results.get(name)
 
 

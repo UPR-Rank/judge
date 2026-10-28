@@ -79,6 +79,7 @@ Submissions are untrusted code, so:
 | `worker` | Grader image; consumes the queue, compiles and judges |
 | `beat` | Schedules the reaper |
 | `redis` | Broker and result backend |
+| `cache` | Shared cache; a separate Redis with LRU eviction so it can never evict the queue |
 | `database` | PostgreSQL: submissions, contests, verdicts — the source of truth |
 | `prometheus` / `grafana` | Production metrics |
 
@@ -144,8 +145,7 @@ docker-compose -f docker/dev/docker-compose.yml exec api \
     /opt/environ/bin/python3 manage.py test tests
 ```
 
-119 tests. Two of them (`tests/test_roles.py`) fail on a clean checkout and
-are unrelated to the judge — they are left as found rather than papered over.
+132 tests, all passing.
 Lint is `flake8` and `black`; the CI workflows run both.
 
 ## Work in progress
@@ -157,8 +157,8 @@ The judge is being modernized in sprints, each on its own branch off `master`.
 | 0 — Independence | Done: build `safeexec` from the UPR-Rank fork, baseline tests |
 | 1 — Judge modularization | Done: the 532-line command split into the `judging` package |
 | 2 — Queue | Done: Celery on Redis, with the reaper |
-| 3 — Shared cache | Next (not started) |
-| 4 — Side effects | Planned |
+| 3 — Shared cache | Done: one Redis-backed cache for every process, versioned invalidation, degrades to local memory |
+| 4 — Side effects | Next: e-mails, webhooks, access log and ratings move to Celery |
 | 5 — Web refactor | Planned |
 | 6 — Observability and deployment | Planned |
 

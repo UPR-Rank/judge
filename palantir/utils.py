@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.utils.text import slugify
 
+from api.lib import cache_keys, constants
 from palantir.models import AccessLog
 
 
@@ -25,7 +26,9 @@ BLACK_LISTED_IPS = []
 def get_real_address_from_ip(ip: str) -> object:
     if not ip:
         return {}
-    info = cache.get(ip)
+    version = cache_keys.current_version(constants.CACHE_KEY_IP_PREFIX)
+    key = cache_keys.versioned_key(constants.CACHE_KEY_IP_PREFIX, version, ip)
+    info = cache.get(key)
     if info:
         return info
     try:
@@ -33,7 +36,7 @@ def get_real_address_from_ip(ip: str) -> object:
         info = json.loads(requests.get(url).content.decode("utf8"))
     except:
         info = {}
-    cache.set(ip, info, 60)
+    cache.set(key, info, constants.IP_INFO_TIMEOUT)
     return info
 
 

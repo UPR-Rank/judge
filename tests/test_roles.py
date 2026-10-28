@@ -41,21 +41,18 @@ class RoleAdminTestCase(FixturedTestCase):
         admin = self.newAdmin(username="admin")
         url = "/user/edit/%d/" % other.pk
 
-        # First, the regular user send a POST request to update their
-        # own profile. As we are not sending any data along with the
-        # request, then a response (status-code=200) is sent back
-        # detailing the required fields. We assert that there is at
-        # least of `This field is required` error.
+        # Every profile field is optional since upstream #170, so an empty
+        # POST is a valid edit: the owner is sent back to their profile.
         self.login(other)
-        response = self.client.post(url, data={})
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "This field is required")
+        response = self.client.post(url, data={"first_name": "Other"})
+        self.assertRedirects(response, "/user/%d/" % other.pk, status_code=302)
 
-        # The admin will be redirected to home if tries to send a POST
-        # request to modify the profile of another user.
+        # The admin is redirected to home and the profile is left untouched.
         self.login(admin)
-        response = self.client.post(url, data={})
+        response = self.client.post(url, data={"first_name": "Hacked"})
         self.assertRedirects(response, "/", status_code=302)
+        other.refresh_from_db()
+        self.assertEqual(other.first_name, "Other")
 
     def test_admin_can_see_other_user_profile_tabs(self):
         john = self.newUser(username="john")

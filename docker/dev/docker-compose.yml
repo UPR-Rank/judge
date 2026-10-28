@@ -31,6 +31,12 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+  # The shared cache gets its own Redis so that evicting it under memory
+  # pressure can never drop a grading task from the broker. Derived data only:
+  # not persisted.
+  cache:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no --maxmemory 64mb --maxmemory-policy allkeys-lru
   api:
     build:
       context: ../..
@@ -51,6 +57,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      cache:
+        condition: service_started
   worker:
     # The grader image installs an x86_64-only gcc toolchain (and PyPy/Mono),
     # so it must be built and run as linux/amd64 to match production. On arm64
@@ -76,6 +84,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      cache:
+        condition: service_started
     cap_add:
       - NET_ADMIN
     ulimits:
@@ -98,6 +108,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      cache:
+        condition: service_started
     cap_add:
       - NET_ADMIN
     ulimits:

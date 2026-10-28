@@ -74,6 +74,17 @@ TASK_TIME_LIMIT: 3600
 # worker, in seconds.
 REAP_INTERVAL: 300
 
+[cache]
+# Shared cache used by every process (web workers, Celery worker, beat).
+# A Redis of its own (the `cache` service), separate from the broker, because
+# it runs with an LRU eviction policy that must never touch grading tasks.
+# Everything cached is derived data: if Redis is unreachable the app answers
+# from a per-process cache instead of failing (see judge/cache.py).
+URL: redis://cache:6379/0
+# Keeps this deployment's keys from being read as another instance's when
+# several environments share one Redis.
+KEY_PREFIX: mog
+
 [social]
 SOCIAL_AUTH_FACEBOOK_KEY: secret_not_auto_fillable_placeholder
 SOCIAL_AUTH_FACEBOOK_SECRET: secret_not_auto_fillable_placeholder

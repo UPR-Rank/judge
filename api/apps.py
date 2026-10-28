@@ -12,5 +12,6 @@ class ApiConfig(AppConfig):
         from .signals.cache import (
             clean_five_top_rated_profiles,
             clean_ten_most_recent_posts,
+            clean_user_rating,
         )
         from .signals.main import create_profile_for_user
