@@ -21,6 +21,13 @@ services:
     volumes:
       - redisdb:/data
     restart: unless-stopped
+  # The shared cache gets its own Redis so that evicting it under memory
+  # pressure can never drop a grading task from the broker above. Everything in
+  # it is derived data, so it is neither persisted nor backed up.
+  cache:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
   api:
     build:
       context: ../..
@@ -34,6 +41,7 @@ services:
     depends_on:
       - database
       - redis
+      - cache
   worker:
     build:
       context: ../..
@@ -50,6 +58,7 @@ services:
     depends_on:
       - database
       - redis
+      - cache
     cap_add:
       - NET_ADMIN
     ulimits:
@@ -70,6 +79,7 @@ services:
     depends_on:
       - database
       - redis
+      - cache
     cap_add:
       - NET_ADMIN
     ulimits:

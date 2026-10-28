@@ -76,10 +76,11 @@ REAP_INTERVAL: 300
 
 [cache]
 # Shared cache used by every process (web workers, Celery worker, beat).
-# Redis database 2, next to the broker (0) and the task results (1). Everything
-# cached is derived data: if Redis is unreachable the app answers from a
-# per-process cache instead of failing (see judge/cache.py).
-URL: redis://redis:6379/2
+# A Redis of its own (the `cache` service), separate from the broker, because
+# it runs with an LRU eviction policy that must never touch grading tasks.
+# Everything cached is derived data: if Redis is unreachable the app answers
+# from a per-process cache instead of failing (see judge/cache.py).
+URL: redis://cache:6379/0
 # Keeps this deployment's keys from being read as another instance's when
 # several environments share one Redis.
 KEY_PREFIX: mog
