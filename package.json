@@ -1,7 +1,7 @@
 {
   "name": "judge",
   "version": "1.0.0",
-  "description": "Matcom Online Grader ===================",
+  "description": "UPR Rank",
   "main": "index.js",
   "directories": {
     "test": "tests"

@@ -9,7 +9,7 @@
         <meta name="description"
               content="{% block meta_description %}UPR Rank. Programming contests of the Universidad de Pinar del Río.{% endblock %}">
         <meta name="keywords"
-              content="programming algorithm contest competition informatics olympiads c++ java python graphs matcom" />
+              content="programming algorithm contest competition informatics olympiads c++ java python graphs upr" />
 
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <meta http-equiv="Cache-Control" max-age="0"/>
@@ -187,23 +187,8 @@
                     <div class="row">
                         <div class="col-md-3">
                             <a href="{% url 'mog:index' %}">
-                                {# Change logo depending the day :) #}
-                                {% if special_day == 'valentine' %}
-                                    <img src="{% static 'mog/images/logo-valentine.png' %}" class="img-responsive"
-                                         alt="UPR Rank"/>
-                                {% elif special_day == 'christmas' %}
-                                    <img src="{% static 'mog/images/logo-ch.png' %}" class="img-responsive"
-                                         alt="UPR Rank"/>
-                                {% elif special_day == 'halloween' %}
-                                    <img src="{% static 'mog/images/logo-hw.png' %}" class="img-responsive"
-                                         alt="UPR Rank"/>
-                                {% elif special_day == 'thanksgiving' %}
-                                    <img src="{% static 'mog/images/logo-tg.png' %}" class="img-responsive"
-                                         alt="UPR Rank"/>
-                                {% else %}
-                                    <img src="{% static 'mog/images/logo.png' %}" class="img-responsive"
-                                         alt="UPR Rank"/>
-                                {% endif %}
+                                <img src="{% static 'mog/images/logo.png' %}" class="img-responsive"
+                                     alt="UPR Rank"/>
                             </a>
                         </div>
                         <div class="col-md-9">
@@ -225,16 +210,9 @@
                                 </form>
                             </div>
                             <h1>UPR Rank</h1>
-                            <!-- <div class="alert alert-info" role="alert">
-                                ℹ️ {% trans "We've recently migrated MOG to a new server with a different grader. As a result, some features—especially those related to submission evaluation—might not work correctly. If you encounter any issues, please report them by clicking the exclamation icon in the bottom right corner of the website." %}
-                            </div> -->
                             <a href="https://github.com/UPR-Rank/judge" target="_blank" style="display: inline-flex; align-items: center;">
                                 <img src="{% static 'mog/images/github-mark.svg' %}" height="20px" style="display: block;" />
                                 <span style="line-height: 1; margin-left: 5px;">{% trans "View on GitHub" %}</span>
-                            </a>
-                            <a href="https://discord.gg/ZVYCzPXMGa" target="_blank" style="display: inline-flex; align-items: center; margin-left: 10px;">
-                                <img src="{% static 'mog/images/Discord-Symbol-Black.svg' %}" height="20px" style="display: block;" />
-                                <span style="line-height: 1; margin-left: 5px;">{% trans "Join our community" %}</span>
                             </a>
                         </div>
                     </div>
@@ -326,11 +304,6 @@
             <footer>
                 <div class="center">
                     <p>&copy; {% now "Y" %} UPR Rank &middot; Universidad de Pinar del Río</p>
-                    <p>
-                        {% trans 'Based on' %}
-                        <a href="https://github.com/MatcomOnlineGrader/judge" target="_blank">Matcom Online Grader (MOG)</a>,
-                        {% trans 'MIT License' %}
-                    </p>
                     <p>Server Time: {% now "jS F Y H:i" %}</p>
                     <p>
                         <a href="{% url 'mog:privacy' %}">

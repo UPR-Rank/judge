@@ -1,15 +1,9 @@
-# UPR Judge
+# UPR Rank
 
-Competitive programming judge built on **MOG (Matcom Online Grader)**, the
-platform that runs the ICPC Caribbean Finals. This fork is a modernization of
-MOG: same contest model, same submission semantics, same verdicts, but with
-the judge refactored into testable modules and the grading moved onto a real
-queue so capacity is no longer tied to a single polling process.
-
-Upstream is [MatcomOnlineGrader/judge](https://github.com/MatcomOnlineGrader/judge).
-The original README is preserved verbatim in
-[README.matcomgrader.md](README.matcomgrader.md), and the MIT notice in
-[LICENSE](LICENSE) is unchanged.
+Competitive programming judge of the Universidad de Pinar del Río: contests,
+automatic grading and rankings for students and teachers. The judge is split
+into testable modules and grading runs on a real queue, so capacity is not
+tied to a single polling process.
 
 ## What it does
 
@@ -107,8 +101,7 @@ of changing the compose command.
 
 - Python 3.12 in the grader image, Django 5.2, PostgreSQL
 - Celery 5.6 on Redis 7
-- `safeexec` built from the [UPR-Rank/safeexec](https://github.com/UPR-Rank/safeexec)
-  fork instead of upstream
+- `safeexec` built from [UPR-Rank/safeexec](https://github.com/UPR-Rank/safeexec)
 - Toolchains: gcc 11.3.0, OpenJDK 17, Kotlin, PyPy, Mono, CPython 3.12
 
 ## Running it locally
@@ -167,12 +160,10 @@ The judge is being modernized in sprints, each on its own branch off `master`.
 
 ### Known gaps
 
-- **The build still depends on upstream for `gcc-11.3.0`.**
-  `docker/common/dockerfile.grader` fetches the toolchain tarball from
-  Matcom's release. A UPR-Rank fork of it has been verified to build, but
-  publishing a prebuilt tarball it can be pointed at is still pending, so an
-  upstream outage breaks the image build. The same is true, less urgently, of
-  `testlib` and `runexe`.
+- **The grader image still downloads `gcc-11.3.0` from a third-party
+  release.** `docker/common/dockerfile.grader` must be pointed at a release
+  published in [UPR-Rank/gcc-11.3.0](https://github.com/UPR-Rank/gcc-11.3.0);
+  until then an outage there breaks the image build.
 - **`Pillow` is pinned to 9.5.0** in `requirements.txt`, which predates
   Django 5.2's requirement of Pillow >= 10.1. Unrelated to the judge, but it
   is wrong and the test image works around it rather than it being fixed here.
@@ -188,4 +179,4 @@ firewall or `safeexec` deserve particular review.
 
 ## License
 
-MIT, inherited from MOG. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
