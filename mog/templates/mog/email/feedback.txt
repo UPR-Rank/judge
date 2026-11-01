@@ -12,5 +12,5 @@ Assigned to: {% if feedback.assigned %}{{ feedback.assigned }}{% else %}----{% e
 
 Reply at {{ domain }}{% url 'mog:feedback_view' feedback.id %}
 
-Matcom Online Grader
+UPR Rank
 {{ domain }}

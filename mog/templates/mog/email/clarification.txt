@@ -11,5 +11,5 @@ Contest: {{ clarification.contest }}
 
 Reply at {{ domain }}{% url 'mog:contest_clarifications' clarification.contest.pk %}
 
-Matcom Online Grader
+UPR Rank
 {{ domain }}
