@@ -47,6 +47,7 @@ from mog.gating import (
     grant_role_to_user_in_contest,
     revoke_role_to_user_in_contest,
     user_can_bypass_frozen_in_contest,
+    user_can_create_contest,
     user_is_admin,
 )
 from mog.helpers import filter_submissions, get_paginator, get_contest_json
@@ -879,15 +880,17 @@ def contest_registration_multiple_disable(request, contest_id):
 class ContestCreateView(View):
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
-        if not user_is_admin(request.user):
+        if not user_can_create_contest(request.user):
             return HttpResponseForbidden()
-        return render(request, "mog/contest/create.html", {"form": ContestForm()})
+        return render(
+            request, "mog/contest/create.html", {"form": ContestForm(user=request.user)}
+        )
 
     @method_decorator(login_required)
     def post(self, request, *args, **kwargs):
-        if not user_is_admin(request.user):
+        if not user_can_create_contest(request.user):
             return HttpResponseForbidden()
-        form = ContestForm(request.POST)
+        form = ContestForm(request.POST, user=request.user)
         if not form.is_valid():
             return render(request, "mog/contest/create.html", {"form": form})
         data = form.cleaned_data
@@ -902,9 +905,14 @@ class ContestCreateView(View):
             death_time=data["death_time"],
             closed=data["closed"],
             allow_teams=data["allow_teams"],
-            group=data["group"],
+            student_group=data["student_group"],
+            # The ranking is labelled with the class when no group was given.
+            group=data["group"]
+            or (data["student_group"] and data["student_group"].name),
         )
         contest.save()
+        if not user_is_admin(request.user):
+            grant_role_to_user_in_contest(request.user, contest, "judge")
         return redirect("mog:contest_problems", contest_id=contest.id)
 
 
@@ -913,14 +921,14 @@ class ContestEditView(View):
     def get(self, request, contest_id, *args, **kwargs):
         contest = get_object_or_404(Contest, pk=contest_id)
 
-        if not user_is_admin(request.user):
+        if not contest.can_be_edited_by(request.user):
             return HttpResponseForbidden()
 
         return render(
             request,
             "mog/contest/edit.html",
             {
-                "form": ContestForm(instance=contest),
+                "form": ContestForm(instance=contest, user=request.user),
                 "contest": contest,
             },
         )
@@ -929,10 +937,10 @@ class ContestEditView(View):
     def post(self, request, contest_id, *args, **kwargs):
         contest = get_object_or_404(Contest, pk=contest_id)
 
-        if not user_is_admin(request.user):
+        if not contest.can_be_edited_by(request.user):
             return HttpResponseForbidden()
 
-        form = ContestForm(request.POST, instance=contest)
+        form = ContestForm(request.POST, instance=contest, user=request.user)
         if not form.is_valid():
             return render(
                 request,
@@ -953,6 +961,7 @@ class ContestEditView(View):
         contest.death_time = data["death_time"]
         contest.closed = data["closed"]
         contest.allow_teams = data["allow_teams"]
+        contest.student_group = data["student_group"]
         contest.save()
         return redirect("mog:contest_problems", contest_id=contest.id)
 
@@ -1406,9 +1415,9 @@ def contest_permission_export(request, contest_id):
     contest = get_object_or_404(Contest, pk=contest_id)
 
     response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = (
-        'attachment; filename="permission_{0}.csv"'.format(contest.name)
-    )
+    response[
+        "Content-Disposition"
+    ] = 'attachment; filename="permission_{0}.csv"'.format(contest.name)
 
     writer = csv.writer(response)
 
@@ -1551,9 +1560,9 @@ def contest_submissions_export(request, contest_id):
                     zipObj.writestr("%s/%s" % (header, filename), source)
         zip_submissions = content.getvalue()
         response = HttpResponse(zip_submissions, content_type="application/zip")
-        response["Content-Disposition"] = (
-            'attachment; filename="submissions_{0}.zip"'.format(contest.name)
-        )
+        response[
+            "Content-Disposition"
+        ] = 'attachment; filename="submissions_{0}.zip"'.format(contest.name)
         return response
 
     except Exception as e:

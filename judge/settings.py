@@ -72,7 +72,7 @@ PASSWORD_GENERATOR_SECRET_KEY = config.get("secrets", "PASSWORD_GENERATOR_SECRET
 ALLOWED_HOSTS = ["*"]
 
 # CSRF trusted origins. Django 4.0+ requires each entry to include the scheme
-# (e.g. "https://matcomgrader.com") and validates the Origin/Referer of unsafe
+# (e.g. "https://judge.upr.edu.cu") and validates the Origin/Referer of unsafe
 # requests (POST/PUT/...) against this list. Production needs it — login,
 # registration and admin POSTs arrive over HTTPS behind a proxy, which 4.0's
 # stricter CSRF rejects unless the origin is trusted. Local dev needs nothing

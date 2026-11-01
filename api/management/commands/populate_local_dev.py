@@ -68,6 +68,10 @@ USERS = [
         "role": "judge",
     },
     {
+        "name": "teacher",
+        "role": "teacher",
+    },
+    {
         "name": "alice",
         "role": None,
     },

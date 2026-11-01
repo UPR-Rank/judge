@@ -160,7 +160,7 @@ The judge is being modernized in sprints, each on its own branch off `master`.
 | 2 — Queue | Done: Celery on Redis, with the reaper |
 | 3 — Shared cache | Done: one Redis-backed cache for every process, versioned invalidation, degrades to local memory |
 | 4 — Side effects | Done: e-mails, webhooks and access logs on their own Celery queue; atomic rating |
-| 5 — UPR identity and academic roles | Next |
+| 5 — UPR identity and academic roles | In progress: UPR Rank branding, teacher role, student groups with group-only contests, ranking by institution |
 | 6 — Web refactor | Planned |
 | 7 — Observability and deployment | Planned |
 | 8 — Validation and v1.0 | Planned |

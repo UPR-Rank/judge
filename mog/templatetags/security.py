@@ -1,6 +1,7 @@
 from django import template
 from mog.gating import (
     is_admin_or_judge_for_problem,
+    user_can_create_contest,
     user_is_admin,
     user_is_judge_in_contest,
 )
@@ -61,7 +62,7 @@ def can_see_contest(user, contest):
 
 @register.filter()
 def can_create_contest(user):
-    return user_is_admin(user)
+    return user_can_create_contest(user)
 
 
 @register.filter()

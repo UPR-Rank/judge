@@ -28,12 +28,19 @@ class UserListView(generic.ListView):
                 | Q(user__first_name__icontains=self.request.GET["q"])
                 | Q(user__last_name__icontains=self.request.GET["q"])
             )
+        if self.request.GET.get("institution", "").isdigit():
+            result = result.filter(institution_id=self.request.GET["institution"])
         return result
 
     def get_context_data(self, **kwargs):
         context = super(UserListView, self).get_context_data(**kwargs)
-        if "q" in self.request.GET:
-            context["query"] = {"q": self.request.GET["q"]}
+        query = {
+            key: self.request.GET[key]
+            for key in ("q", "institution")
+            if key in self.request.GET
+        }
+        if query:
+            context["query"] = query
         return context
 
 

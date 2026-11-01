@@ -13,10 +13,12 @@ from api.models import (
     Contest,
     Post,
     Problem,
+    StudentGroup,
     User,
     UserFeedback,
     UserProfile,
 )
+from mog.gating import user_is_admin
 from mog.turnstile import TurnstileField
 from mog.utils import secure_html
 
@@ -100,13 +102,19 @@ class ContestForm(forms.ModelForm):
             "frozen_time",
             "death_time",
             "group",
+            "student_group",
             "closed",
             "allow_teams",
         ]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["description"].widget.attrs["class"] = "summernote-editor"
+        if user is not None and not user_is_admin(user):
+            # A teacher can only open a contest to the groups they teach.
+            self.fields["student_group"].queryset = StudentGroup.objects.filter(
+                teacher=user
+            )
 
     def clean_description(self):
         return secure_html(self.cleaned_data["description"])
