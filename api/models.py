@@ -27,6 +27,7 @@ from mog.gating import (
     user_is_admin,
     user_is_judge_in_contest,
     user_is_observer_in_contest,
+    user_is_teacher,
 )
 
 
@@ -85,7 +86,13 @@ class Tag(models.Model):
     description = models.TextField(blank=True, null=True)
 
     def get_visible_problems(self, admin=False):
-        return self.problems if admin else self.problems.filter(contest__visible=True)
+        return (
+            self.problems
+            if admin
+            else self.problems.filter(
+                contest__visible=True, contest__student_group__isnull=True
+            )
+        )
 
     def __str__(self):
         return self.name
@@ -109,6 +116,29 @@ class Checker(models.Model):
         return self.name
 
 
+class StudentGroup(models.Model):
+    """A class of students under one teacher, e.g. a course's lab group."""
+
+    name = models.CharField(max_length=100, verbose_name=_("Name"))
+    teacher = models.ForeignKey(
+        User,
+        related_name="taught_groups",
+        on_delete=models.PROTECT,
+        verbose_name=_("Teacher"),
+    )
+    students = models.ManyToManyField(
+        User, blank=True, related_name="student_groups", verbose_name=_("Students")
+    )
+
+    def __str__(self):
+        return self.name
+
+    def has_member(self, user):
+        return user.is_authenticated and (
+            self.teacher_id == user.id or self.students.filter(pk=user.pk).exists()
+        )
+
+
 class Contest(models.Model):
     name = models.CharField(max_length=100, unique=False)
     code = models.CharField(max_length=20, unique=True)
@@ -125,9 +155,26 @@ class Contest(models.Model):
     group = models.CharField(
         max_length=64, blank=True, null=True, verbose_name=_("Default group")
     )
+    student_group = models.ForeignKey(
+        StudentGroup,
+        null=True,
+        blank=True,
+        related_name="contests",
+        on_delete=models.SET_NULL,
+        verbose_name=_("Only for students of"),
+    )
 
     def __str__(self):
         return self.name
+
+    def is_closed_to(self, user):
+        """A group contest exists only for its group, its judges and admins."""
+        return (
+            self.student_group is not None
+            and not self.student_group.has_member(user)
+            and not user_is_admin(user)
+            and not user_is_judge_in_contest(user, self)
+        )
 
     def can_be_seen_by(self, user):
         """
@@ -136,6 +183,8 @@ class Contest(models.Model):
         > submissions
         > submit
         """
+        if self.is_closed_to(user):
+            return False
         return (
             user_is_admin(user)
             or user_is_judge_in_contest(user, self)
@@ -143,12 +192,17 @@ class Contest(models.Model):
         )
 
     def overview_can_be_seen_by(self, user):
+        if self.is_closed_to(user):
+            return False
         return (
             self.visible or user_is_admin(user) or user_is_judge_in_contest(user, self)
         )
 
     def can_be_edited_by(self, user):
-        return user_is_admin(user)
+        # A teacher becomes judge of the contests they create.
+        return user_is_admin(user) or (
+            user_is_teacher(user) and user_is_judge_in_contest(user, self)
+        )
 
     def can_show_saris_to(self, user):
         return (
@@ -237,6 +291,8 @@ class Contest(models.Model):
         """
         if self.is_past or (self.closed and not bypass_closed):
             return False
+        if self.is_closed_to(user):
+            return False
         if (
             user_is_admin(user)
             or user_is_judge_in_contest(user, self)
@@ -264,6 +320,8 @@ class Contest(models.Model):
         3) User is not registered (individually or in a team).
         """
         if not self.is_past or self.needs_unfreeze:
+            return False
+        if self.is_closed_to(user):
             return False
         if (
             user_is_admin(user)
@@ -337,6 +395,12 @@ class Contest(models.Model):
                 )
             else:
                 queryset = Contest.objects.filter(Q(visible=True))
+            open_to_user = Q(student_group__isnull=True) | Q(id__in=contest_ids)
+            if user.is_authenticated:
+                open_to_user |= Q(student_group__teacher=user) | Q(
+                    student_group__students=user
+                )
+            queryset = queryset.filter(open_to_user).distinct()
 
         now = timezone.now()
         running = queryset.filter(start_date__lte=now, end_date__gte=now).order_by(
@@ -432,7 +496,11 @@ class Problem(models.Model):
     @staticmethod
     def get_visible_problems(admin=False):
         return (
-            Problem.objects if admin else Problem.objects.filter(contest__visible=True)
+            Problem.objects
+            if admin
+            else Problem.objects.filter(
+                contest__visible=True, contest__student_group__isnull=True
+            )
         )
 
     @property
@@ -699,6 +767,7 @@ ROLE_CHOICES = [
     ("browser", "Code Browser"),
     ("observer", "Observer"),
     ("judge", "Judge"),
+    ("teacher", "Teacher"),
 ]
 
 THEME_CHOICES = [
@@ -829,6 +898,10 @@ class UserProfile(models.Model):
     @property
     def is_browser(self):
         return self.role == "browser"
+
+    @property
+    def is_teacher(self):
+        return self.role == "teacher"
 
     @property
     def rating(self):

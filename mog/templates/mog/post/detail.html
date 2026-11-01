@@ -21,15 +21,15 @@
         <meta property="og:image" content="{{post.meta_image}}" />
     {% endif %}
 
-    <meta property="og:url" content="http://matcomgrader.com{% url 'mog:post' post.pk post.slug %}" />
+    <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{% url 'mog:post' post.pk post.slug %}" />
 
     <!--  Non-Essential, But Recommended -->
-    <meta property="og:site_name" content='Matcom Online Grader' />
+    <meta property="og:site_name" content='UPR Rank' />
 
     <!--  Article META Tags -->
     <meta property="og:type" content="article"/>
-    <meta property="article:author' content="http://matcomgrader.com{% url 'mog:user' post.user.pk %}" />
-    <meta property="article:publisher" content="http://matcomgrader.com" />
+    <meta property="article:author' content="{{ request.scheme }}://{{ request.get_host }}{% url 'mog:user' post.user.pk %}" />
+    <meta property="article:publisher" content="{{ request.scheme }}://{{ request.get_host }}" />
     <meta property="article:published_time" content='{{post.creation_date | date:"c"}}' />
     <meta property="article:modified_time" content='{{post.modification_date | date:"c"}}' />
 {% endblock %}

@@ -17,7 +17,19 @@
                 <p>
                     <input class="form-control" name="q" type="text"
                            placeholder="{% trans 'Search by name ...' %}" {% if query %}value="{{ query.q }}"{% endif %}/>
+                    {% if query.institution %}
+                        <input type="hidden" name="institution" value="{{ query.institution }}"/>
+                    {% endif %}
                     <button type="submit" class="btn btn-default">{% trans 'Search' %}</button>
+                    {% if user.is_authenticated and user.profile.institution_id %}
+                        {% if query.institution %}
+                            <a href="{% url 'mog:users' %}" class="btn btn-link">{% trans 'All institutions' %}</a>
+                        {% else %}
+                            <a href="{% url 'mog:users' %}?institution={{ user.profile.institution_id }}" class="btn btn-link">
+                                {{ user.profile.institution.name }}
+                            </a>
+                        {% endif %}
+                    {% endif %}
                 </p>
             </form>
         </div>

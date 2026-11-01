@@ -9,7 +9,7 @@ BLOCK_PUBLIC_ACTIONS: false
 # CSRF trusted origins for Django 4.0+ (comma-separated, scheme REQUIRED).
 # Leave empty for local dev (same-origin http://localhost needs nothing).
 # In production set this to the site's HTTPS origin(s), e.g.:
-#   CSRF_TRUSTED_ORIGINS: https://matcomgrader.com, https://www.matcomgrader.com
+#   CSRF_TRUSTED_ORIGINS: https://judge.upr.edu.cu
 CSRF_TRUSTED_ORIGINS:
 
 [database]

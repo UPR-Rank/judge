@@ -7,7 +7,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="description"
-              content="{% block meta_description %}Matcom Online Grader. Programming contests, algorithms and mathematics.{% endblock %}">
+              content="{% block meta_description %}UPR Rank. Programming contests of the Universidad de Pinar del Río.{% endblock %}">
         <meta name="keywords"
               content="programming algorithm contest competition informatics olympiads c++ java python graphs matcom" />
 
@@ -18,7 +18,7 @@
         {% block metas %}
             {# add meta tags here #}
         {% endblock %}
-        <title>{% block title %}{% endblock %} | MatCom Online Grader</title>
+        <title>{% block title %}{% endblock %} | UPR Rank</title>
         <link rel="shortcut icon" type="image/vnd.microsoft.icon" href="{% static 'mog/images/favicon.ico' %}"/>
 
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha256-916EbMg70RQy9LHiGkXzG8hSg9EdNy97GazNG/aiY1w=" crossorigin="anonymous" />
@@ -190,19 +190,19 @@
                                 {# Change logo depending the day :) #}
                                 {% if special_day == 'valentine' %}
                                     <img src="{% static 'mog/images/logo-valentine.png' %}" class="img-responsive"
-                                         alt="MOG: Happy Valentine Day!"/>
+                                         alt="UPR Rank"/>
                                 {% elif special_day == 'christmas' %}
                                     <img src="{% static 'mog/images/logo-ch.png' %}" class="img-responsive"
-                                         alt="MOG: Happy Christmas!"/>
+                                         alt="UPR Rank"/>
                                 {% elif special_day == 'halloween' %}
                                     <img src="{% static 'mog/images/logo-hw.png' %}" class="img-responsive"
-                                         alt="MOG: Happy Halloween!"/>
+                                         alt="UPR Rank"/>
                                 {% elif special_day == 'thanksgiving' %}
                                     <img src="{% static 'mog/images/logo-tg.png' %}" class="img-responsive"
-                                         alt="MOG: Happy Thanksgiving!"/>
+                                         alt="UPR Rank"/>
                                 {% else %}
                                     <img src="{% static 'mog/images/logo.png' %}" class="img-responsive"
-                                         alt="MOG"/>
+                                         alt="UPR Rank"/>
                                 {% endif %}
                             </a>
                         </div>
@@ -224,7 +224,7 @@
                                     </a>
                                 </form>
                             </div>
-                            <h1>Matcom Online Grader</h1>
+                            <h1>UPR Rank</h1>
                             <!-- <div class="alert alert-info" role="alert">
                                 ℹ️ {% trans "We've recently migrated MOG to a new server with a different grader. As a result, some features—especially those related to submission evaluation—might not work correctly. If you encounter any issues, please report them by clicking the exclamation icon in the bottom right corner of the website." %}
                             </div> -->
@@ -325,28 +325,18 @@
 
             <footer>
                 <div class="center">
-                    <p>&copy; 2016 - {% now "Y" %} Matcom Online Grader (MOG)</p>
-                    <p>Server Time: {% now "jS F Y H:i" %}</p>
+                    <p>&copy; {% now "Y" %} UPR Rank &middot; Universidad de Pinar del Río</p>
                     <p>
-                        <a href="https://www.facebook.com/MatcomOnlineGrader" target="_blank" style="text-decoration: none;">
-                            <img src="{% static 'mog/images/fl.png' %}" class="margin-right-5">
-                        </a>
-                        <a href="https://twitter.com/MatcomGrader" target="_blank" style="text-decoration: none;">
-                            <img src="{% static 'mog/images/tl.png' %}" class="margin-left-5">
-                        </a>
+                        {% trans 'Based on' %}
+                        <a href="https://github.com/MatcomOnlineGrader/judge" target="_blank">Matcom Online Grader (MOG)</a>,
+                        {% trans 'MIT License' %}
                     </p>
+                    <p>Server Time: {% now "jS F Y H:i" %}</p>
                     <p>
                         <a href="{% url 'mog:privacy' %}">
                             {% trans 'Privacy Policy' %}
                         </a>
                     </p>
-                    <div class="d-flex justify-content-center flex-column align-items-center text-center margin-top-25">
-                        <div>{% trans 'Sponsored by' %}</div>
-                        <a href="https://www.clubesdeprogramacioncompetitiva.com">
-                            <img src="{% static 'mog/images/cpc.webp' %}" class="img-fluid" width="256px" height="auto"
-                                alt="Clubes de Programación Competitiva CPC" />
-                        </a>
-                    </div>
                 </div>
             </footer>
         </div>

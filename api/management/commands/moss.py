@@ -12,6 +12,7 @@ from django.db.models import Q
 import requests
 
 from api.models import Contest, User
+from mog.tasks import site_url
 from collections import namedtuple
 
 MatchedSubmission = namedtuple("MatchedSubmission", ["path", "coverage", "uid", "sid"])
@@ -21,7 +22,6 @@ MOSS_DIR_PATH = os.path.join(settings.BASE_DIR, "moss")
 MOSS_EXE_PATH = os.path.join(MOSS_DIR_PATH, "moss")
 MOSS_LANG_OVERRIDE = {"py": "python", "cpp": "cc"}
 MOSS_MATCH_RE = r"http://moss\.stanford\.edu/results/\d+/\d+/match\d+\.html"
-MOG_URL = "https://matcomgrader.com"
 
 
 class Command(BaseCommand):
@@ -213,23 +213,33 @@ class Command(BaseCommand):
             # Create the HTML row
             tr = soup.new_tag("tr")
             tr.append(
-                link(soup, user_1.username, "%s/user/%d" % (MOG_URL, user_1.pk), color1)
+                link(
+                    soup,
+                    user_1.username,
+                    "%s/user/%d" % (site_url(), user_1.pk),
+                    color1,
+                )
             )
             tr.append(
-                link(soup, user_2.username, "%s/user/%d" % (MOG_URL, user_2.pk), color2)
+                link(
+                    soup,
+                    user_2.username,
+                    "%s/user/%d" % (site_url(), user_2.pk),
+                    color2,
+                )
             )
             tr.append(
                 link(
                     soup,
                     "%d (%d %%)" % (s1.sid, s1.coverage),
-                    "%s/submission/%d" % (MOG_URL, s1.sid),
+                    "%s/submission/%d" % (site_url(), s1.sid),
                 )
             )
             tr.append(
                 link(
                     soup,
                     "%d (%d %%)" % (s2.sid, s2.coverage),
-                    "%s/submission/%d" % (MOG_URL, s2.sid),
+                    "%s/submission/%d" % (site_url(), s2.sid),
                 )
             )
             tr.append(text(soup, problem))

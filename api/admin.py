@@ -15,6 +15,7 @@ from .models import (
     Problem,
     RatingChange,
     Result,
+    StudentGroup,
     Submission,
     Tag,
     Team,
@@ -69,6 +70,12 @@ class CountryAdmin(admin.ModelAdmin):
 
 class InstitutionAdmin(admin.ModelAdmin):
     ordering = ("name",)
+
+
+class StudentGroupAdmin(admin.ModelAdmin):
+    list_display = ("name", "teacher")
+    search_fields = ("name", "teacher__username")
+    filter_horizontal = ("students",)
 
 
 class TagAdmin(admin.ModelAdmin):
@@ -150,6 +157,7 @@ admin.site.register(Post)
 admin.site.register(Problem)
 admin.site.register(RatingChange)
 admin.site.register(Result)
+admin.site.register(StudentGroup, StudentGroupAdmin)
 admin.site.register(Submission)
 admin.site.register(Tag, TagAdmin)
 admin.site.register(Team)

@@ -9,6 +9,17 @@ def user_is_admin(user):
     return user.is_authenticated and hasattr(user, "profile") and user.profile.is_admin
 
 
+def user_is_teacher(user):
+    """return True iff logged user is a teacher"""
+    return (
+        user.is_authenticated and hasattr(user, "profile") and user.profile.is_teacher
+    )
+
+
+def user_can_create_contest(user):
+    return user_is_admin(user) or user_is_teacher(user)
+
+
 # -----------------------------------------------------------------------
 # New permission model based on ContestPermission table
 # -----------------------------------------------------------------------
