@@ -1,11 +1,10 @@
 from django import template
 from mog.gating import (
+    is_admin_or_judge_for_contest,
     is_admin_or_judge_for_problem,
     user_can_create_contest,
     user_is_admin,
-    user_is_judge_in_contest,
 )
-
 
 register = template.Library()
 
@@ -149,7 +148,7 @@ def can_remove_comment(user, comment):
 
 @register.filter()
 def can_edit_clarification(user, contest):
-    return user_is_admin(user) or user_is_judge_in_contest(user, contest)
+    return is_admin_or_judge_for_contest(user, contest)
 
 
 @register.filter()
@@ -179,7 +178,7 @@ def can_create_clarification(user, contest):
         True only if `user` can ask for clarification in `contest`.
         False otherwise.
     """
-    if user_is_admin(user) or user_is_judge_in_contest(user, contest):
+    if is_admin_or_judge_for_contest(user, contest):
         return True
     return user.is_authenticated and (
         contest.is_running and contest.real_registration(user)
