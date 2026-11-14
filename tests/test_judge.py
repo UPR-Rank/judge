@@ -2,17 +2,11 @@
 
 These tests pin down the current behaviour of the judge before it is
 refactored (Sprint 1) and before it is moved onto a task queue (Sprint 2).
-They deliberately assert the *existing* output, including two places where
-the current implementation looks inconsistent, so that any change in
-grading behaviour shows up as a test failure rather than as a silently
-different verdict:
-
-  * Kotlin is given a heap 1024x larger than the problem's memory limit,
-    while Java is given the correct one (see
-    ``test_kotlin_heap_limit_is_1024_times_the_problem_limit``).
-  * The compiled and interpreted runtimes are limited with ``--clock``
-    (wall clock), but the virtual-machine runtimes are not (see
-    ``test_vm_runtimes_have_no_wall_clock_limit``).
+Two inconsistencies they originally pinned were fixed in Sprint 6: Kotlin
+now gets the same heap as Java (see
+``test_kotlin_heap_matches_the_problem_memory_limit``) and the virtual-machine
+runtimes are now bounded by ``--clock`` like the rest (see
+``test_every_runtime_has_a_wall_clock_limit``).
 
 None of these tests touch the database, the sandbox or safeexec itself, so
 they run without Docker.
@@ -227,7 +221,7 @@ class SafeexecCommandTestCase(SimpleTestCase):
 
         self.assertEqual(
             cmd,
-            "safeexec --stack 4194304 --nproc 20 --mem %d --cpu 2 --vmrss "
+            "safeexec --stack 4194304 --nproc 20 --mem %d --cpu 2 --clock 2 --vmrss "
             "--exec /usr/bin/java -Dfile.encoding=UTF-8 -XX:+UseSerialGC "
             "-Xms32m -Xmx256M -Xss64m -DMOG=true Main" % (256 * 1024),
         )
@@ -235,39 +229,23 @@ class SafeexecCommandTestCase(SimpleTestCase):
     def test_java_heap_matches_the_problem_memory_limit(self):
         self.assertIn("-Xmx256M", self.build("java"))
 
-    def test_kotlin_heap_limit_is_1024_times_the_problem_limit(self):
-        """Known inconsistency, pinned on purpose.
-
-        ``Problem.memory_limit`` is expressed in MB (see the model's
-        ``verbose_name``), so a 256 MB problem should give Kotlin
-        ``-J-Xmx256M``, exactly like Java. The current code multiplies by
-        1024 a second time and asks for 256 GB. safeexec's ``--mem`` limit
-        is still correct, so this most likely does not change verdicts, but
-        it should be confirmed and fixed deliberately rather than by
-        accident during the Sprint 1 refactor.
-        """
-        self.assertIn("-J-Xmx%dM" % (256 * 1024), self.build("kotlin"))
+    def test_kotlin_heap_matches_the_problem_memory_limit(self):
+        # Problem.memory_limit is in MB, so -J-Xmx takes it as is, like Java.
+        self.assertIn("-J-Xmx256M ", self.build("kotlin"))
 
     def test_csharp_command(self):
         cmd = self.build("csharp")
 
         self.assertEqual(
             cmd,
-            "safeexec --stack 4194304 --nproc 6 --mem %d --cpu 2 --vmrss "
+            "safeexec --stack 4194304 --nproc 6 --mem %d --cpu 2 --clock 2 --vmrss "
             "--exec /usr/local/bin/mono ./42.exe" % (256 * 1024),
         )
 
-    def test_vm_runtimes_have_no_wall_clock_limit(self):
-        """Known inconsistency, pinned on purpose.
-
-        Compiled and interpreted runtimes are bounded by both --cpu (CPU
-        time) and --clock (wall clock). The VM runtimes (java, kotlin,
-        csharp) only get --cpu, so a submission that blocks on, say, stdin
-        can burn wall-clock time indefinitely.
-        """
-        for language in ["java", "kotlin", "csharp"]:
+    def test_every_runtime_has_a_wall_clock_limit(self):
+        for language in ["c++", "python", "java", "kotlin", "csharp"]:
             with self.subTest(language=language):
-                self.assertNotIn("--clock", self.build(language))
+                self.assertIn("--cpu 2 --clock 2 ", self.build(language))
 
     def test_stack_limit_is_four_gibibytes(self):
         self.assertEqual(LARGECONST, 4194304)

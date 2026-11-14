@@ -164,9 +164,6 @@ The judge is being modernized in sprints, each on its own branch off `master`.
   release.** `docker/common/dockerfile.grader` must be pointed at a release
   published in [UPR-Rank/gcc-11.3.0](https://github.com/UPR-Rank/gcc-11.3.0);
   until then an outage there breaks the image build.
-- **Two known judge defects are left in place** and pinned by tests: Kotlin
-  receives `-J-Xmx` 1024× the memory limit in MB, and Java/Kotlin/C# runs
-  without `--clock`, so they are not charged for time they do not use.
 
 ## Contributing
 
