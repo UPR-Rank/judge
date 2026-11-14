@@ -5,7 +5,7 @@ from . import views
 app_name = "mog"
 urlpatterns = [
     re_path(r"^robots.txt", views.robotstxt),
-    re_path(r"^health/$", views.health, name="health"),
+    re_path(r"^health/?$", views.health, name="health"),
     re_path(r"^faq/$", views.faq, name="faq"),
     re_path(r"^privacy/$", views.privacy, name="privacy"),
     re_path(r"^feedback$", views.feedback_list, name="feedback_list"),
