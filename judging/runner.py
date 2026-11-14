@@ -31,12 +31,12 @@ def get_cmd_for_language_safeexec(
     #    escalation/Information diclosure) all because it uses the SUID bit
     # note3:Shall we consider only CPU seconds and ignore the delay caused by the syscalls?
     if lang == "java":
-        cmd = f"safeexec --stack {LARGECONST} --nproc 20 --mem {memory_limit*1024} --cpu {time_limit} --vmrss --exec /usr/bin/java -Dfile.encoding=UTF-8 -XX:+UseSerialGC -Xms32m -Xmx{memory_limit}M -Xss64m -DMOG=true Main"
+        cmd = f"safeexec --stack {LARGECONST} --nproc 20 --mem {memory_limit*1024} --cpu {time_limit} --clock {time_limit} --vmrss --exec /usr/bin/java -Dfile.encoding=UTF-8 -XX:+UseSerialGC -Xms32m -Xmx{memory_limit}M -Xss64m -DMOG=true Main"
         return cmd
     elif lang == "kotlin":
-        return f"safeexec --stack {LARGECONST} --nproc 20 --mem {memory_limit*1024} --cpu {time_limit} --vmrss --exec /opt/kotlin-1.7.21/bin/kotlin -Dfile.encoding=UTF-8 -J-XX:+UseSerialGC -J-Xms32M -J-Xmx{memory_limit*1024}M -J-Xss64m -J-DMOG=true MainKt"
+        return f"safeexec --stack {LARGECONST} --nproc 20 --mem {memory_limit*1024} --cpu {time_limit} --clock {time_limit} --vmrss --exec /opt/kotlin-1.7.21/bin/kotlin -Dfile.encoding=UTF-8 -J-XX:+UseSerialGC -J-Xms32M -J-Xmx{memory_limit}M -J-Xss64m -J-DMOG=true MainKt"
     elif lang == "csharp":
-        return f"safeexec --stack {LARGECONST} --nproc 6 --mem {memory_limit*1024} --cpu {time_limit} --vmrss --exec /usr/local/bin/mono ./{submission.id}.{compiler.exec_extension}"
+        return f"safeexec --stack {LARGECONST} --nproc 6 --mem {memory_limit*1024} --cpu {time_limit} --clock {time_limit} --vmrss --exec /usr/local/bin/mono ./{submission.id}.{compiler.exec_extension}"
     elif lang in ["python", "javascript", "python2", "python3"]:
         fmt_args = compiler.arguments.format(
             "%d.%s" % (submission.id, compiler.file_extension)

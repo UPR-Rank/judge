@@ -167,9 +167,6 @@ The judge is being modernized in sprints, each on its own branch off `master`.
 - **`Pillow` is pinned to 9.5.0** in `requirements.txt`, which predates
   Django 5.2's requirement of Pillow >= 10.1. Unrelated to the judge, but it
   is wrong and the test image works around it rather than it being fixed here.
-- **Two known judge defects are left in place** and pinned by tests: Kotlin
-  receives `-J-Xmx` 1024× the memory limit in MB, and Java/Kotlin/C# runs
-  without `--clock`, so they are not charged for time they do not use.
 
 ## Contributing
 
