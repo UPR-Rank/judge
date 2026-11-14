@@ -1,0 +1,27 @@
+name: Django tests
+
+on: [push, pull_request]
+
+jobs:
+  tests:
+    name: Run manage.py test tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      # Same settings.ini generation as updev.sh.
+      - name: Generate settings.ini
+        run: |
+          perl -pe 's/secret_auto_fillable_placeholder/substr("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",rand()*62,12)/ge' settings.ini.template > settings.ini
+          echo "DATABASE_PASS=$(awk -F ':' '/DATABASE_PASS/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}' settings.ini)" >> "$GITHUB_ENV"
+      # The api image has no sandbox or compilers; the suite does not need
+      # them. `run` only starts the api's dependencies (database, redis,
+      # cache), so the grader image is never built.
+      - name: Run tests in the dev api container
+        run: |
+          docker compose -f docker/dev/docker-compose.yml run --rm api \
+            /opt/environ/bin/python3 manage.py test tests
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker/dev/docker-compose.yml down -v
