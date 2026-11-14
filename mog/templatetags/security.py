@@ -126,7 +126,7 @@ def can_see_tabs_in_user_profile(viewer, user_in_profile):
     """
     if not viewer.is_authenticated:
         return False
-    return viewer == user_in_profile or viewer.profile.is_admin
+    return viewer == user_in_profile or user_is_admin(viewer)
 
 
 @register.filter()
