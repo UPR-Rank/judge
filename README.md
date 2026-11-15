@@ -153,8 +153,8 @@ The judge is being modernized in sprints, each on its own branch off `master`.
 | 2 — Queue | Done: Celery on Redis, with the reaper |
 | 3 — Shared cache | Done: one Redis-backed cache for every process, versioned invalidation, degrades to local memory |
 | 4 — Side effects | Done: e-mails, webhooks and access logs on their own Celery queue; atomic rating |
-| 5 — UPR identity and academic roles | In progress: UPR Rank branding, teacher role, student groups with group-only contests, ranking by institution |
-| 6 — Web refactor | Planned |
+| 5 — UPR identity and academic roles | Done: UPR Rank branding, teacher role, student groups with group-only contests, ranking by institution |
+| 6 — Web refactor | In progress: Pillow 13, judge defects (Kotlin heap, wall clock for Java/Kotlin/C#) and permission filters unified; splitting `contest.py` is pending |
 | 7 — Observability and deployment | Planned |
 | 8 — Validation and v1.0 | Planned |
 
@@ -164,12 +164,6 @@ The judge is being modernized in sprints, each on its own branch off `master`.
   release.** `docker/common/dockerfile.grader` must be pointed at a release
   published in [UPR-Rank/gcc-11.3.0](https://github.com/UPR-Rank/gcc-11.3.0);
   until then an outage there breaks the image build.
-- **`Pillow` is pinned to 9.5.0** in `requirements.txt`, which predates
-  Django 5.2's requirement of Pillow >= 10.1. Unrelated to the judge, but it
-  is wrong and the test image works around it rather than it being fixed here.
-- **Two known judge defects are left in place** and pinned by tests: Kotlin
-  receives `-J-Xmx` 1024× the memory limit in MB, and Java/Kotlin/C# runs
-  without `--clock`, so they are not charged for time they do not use.
 
 ## Contributing
 
