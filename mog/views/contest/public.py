@@ -278,9 +278,9 @@ def contest_submissions_export(request, contest_id):
                     zipObj.writestr("%s/%s" % (header, filename), source)
         zip_submissions = content.getvalue()
         response = HttpResponse(zip_submissions, content_type="application/zip")
-        response[
-            "Content-Disposition"
-        ] = 'attachment; filename="submissions_{0}.zip"'.format(contest.name)
+        response["Content-Disposition"] = (
+            'attachment; filename="submissions_{0}.zip"'.format(contest.name)
+        )
         return response
 
     except Exception as e:

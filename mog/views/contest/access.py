@@ -124,9 +124,9 @@ def contest_permission_export(request, contest_id):
     contest = get_object_or_404(Contest, pk=contest_id)
 
     response = HttpResponse(content_type="text/csv")
-    response[
-        "Content-Disposition"
-    ] = 'attachment; filename="permission_{0}.csv"'.format(contest.name)
+    response["Content-Disposition"] = (
+        'attachment; filename="permission_{0}.csv"'.format(contest.name)
+    )
 
     writer = csv.writer(response)
 
