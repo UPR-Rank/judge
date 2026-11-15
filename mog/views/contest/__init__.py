@@ -12,7 +12,7 @@ from .public import (
     team_submissions,
     contest_submissions_export,
 )
-from .manage import (
+from .admin import (
     contest_manage,
     contest_manage_import_baylor,
     contest_manage_import_guest,
@@ -50,7 +50,7 @@ from .results import (
     contest_csv,
     contest_baylor,
 )
-from .permissions import (
+from .access import (
     contest_permission,
     contest_add_permission,
     contest_permission_export,
